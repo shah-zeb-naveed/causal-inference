@@ -1,59 +1,173 @@
-## Causal Inference Notes
-
-### Key Concepts
-
-* **Causation:**
-    * **ATE (Average Treatment Effect):** E[Y1 - Y0]
-    * **ATT (Average Treatment Effect on the Treated):** E[Y1 - Y0 | T=1]
-    * **Counterfactuals:** Hypothetical outcomes an individual would experience under different treatment conditions (Y0 for untreated, Y1 for treated).
-* **Association:** E[Y | T=1] - E[Y | T=0]
-* **Bias:** Difference between association and the true causal effect (ATT or ATE)
-
-### Randomized Controlled Trials (RCTs)
-
-* Gold standard for causal inference due to random assignment of treatment
-* Key properties:
-    * (Y_0, Y_1) | T
-    * Treatment is the only difference between the groups
-    * Knowing the treatment assignment doesn't provide information about the counterfactuals
-* Simplest analysis: Difference in means: E[Y | T=1] - E[Y | T=0]
-
-### Observational Data and Challenges
-
-* Challenges:
-    * **Confounding:** Variables influence both treatment assignment and outcome
-    * **Selection bias:** Factors influence both likelihood of receiving treatment and outcome
-    * **Unobserved confounders:** Unmeasured variables that affect both treatment and outcome
-
-### Methods for Causal Inference with Observational Data
-
-* **Regression:** Used to control for confounding variables and estimate the ACE
-    * OLS regression can be biased if confounders are omitted
-    * Propensity score matching and weighting
-    * Instrumental variables (IVs)
-* **Matching:** Identifies pairs of treated and untreated units with similar characteristics
-    * K-nearest neighbors (KNN) and other matching algorithms
-* **Difference-in-differences (DID):** Exploits panel data and compares change in outcome for treated and untreated groups before and after the treatment
-    * Assumes parallel trends in the absence of treatment
-* **Synthetic control:** Creates a synthetic control group from other units in the data to mimic the treated group before the treatment
-* **Regression discontinuity designs (RDDs):** Exploits the discontinuity in the treatment assignment rule at a specific threshold of a running variable
-    * Provides local estimates of the causal effect for individuals close to the threshold
-* **Machine learning methods:** Various techniques like meta-learners and targeted causal inference models
-
-### Heterogeneous Treatment Effects (CATE)
-
-* CATE aims to estimate the treatment effect for different subpopulations or individuals
-* Methods include:
-    * Regression models with interaction terms
-    * Quantile treatment effects
-    * Machine learning models for CATE estimation
-
-### Evaluating Causal Inference Models
-
-* Sensitivity analysis
-* Cumulative sensitivity analysis
-
-### Use Cases and Considerations
-
-* Causal inference helps inform decision-making by understanding the true impact of interventions
-* Limitations like unobserved confounders and model dependence necessitate careful interpretation and sensitivity analysis
+- **Causation:** ATE = E[Y1 - Y0]
+- **Expected value:** average of a random variable or weighted sum of outcomes with their corresponding probabilities over a large number of trials
+- **ATT:** E[Y1 - Y0 | T=1]
+- **Counterfactuals:** Y0 cannot be observed
+- **Association:** E[Y | T=1] - E[Y | T=0]  
+- **Association:** ATT + Bias (E[Y0 | T=1] - E[Y0 | T=0])
+- If Bias = 0, Association = ATT, a.k.a Causation. If no bias, then treated and untreated are the same, and causal impact is the same. Also, ATE = ATT
+- **RCTs:**
+  - Treatment can be assigned differently than a 50:50 split
+  - (Y_0, Y_1) | T
+    - Does not mean the outcome is independent of treatment but that
+      - Both T groups are comparable
+      - Treatment is the only thing generating a difference in the outcome
+      - Knowing the treatment assignment doesn’t give me any information on how the outcome was previous to the treatment
+    - E[Y0 | T=0] = E[Y0 | T=1] = E[Y0]
+  - Simple difference in means E[Y | T=1] - E[Y | T=0] would give ATE
+  - Sanity check: even with RCT, confirm if groups are similar by checking their pre-treatment variables.
+- Treatment assignment may not be practical, ethical, or financially feasible.
+- **P-value:** probability of observing values as extreme as the values actually observed given the null is true
+- **Confidence Interval:** in 95% of repeated hypothetical samples, the intervals generated as such will contain the true population parameter
+- **Conditional independence:** (Y0, Y1) independent T | X
+- **Types of graphs:**
+  - Simple A -> B -> C
+    - Conditioning on B blocks the path so A and C are independent
+    - Knowing B, knowing A does not give further info about C
+    - E[C|A,B] = E[C|B] (i.e. no further information)
+  - Fork Structure (Backdoor path) A <- B -> C
+    - Knowing B already gives me all the information about A and C.
+    - A and C become independent.
+    - If B is unknown/unconditioned, C can be inferred if A is known
+  - Collider B -> C <- A:
+    - Explaining Away: if C is known, A and B become dependent. One cause already explains the effect, so the other cause is less likely
+    - Not conditioning on C keeps the path closed
+- **Bias:**
+  - **Confounding:**
+    - One factor causes both treatment and outcome
+    - Control all common causes of treatment and outcome
+    - If that unmeasured affects treatment through an intermediary factor, control that to close the backdoor path
+    - If Directly, control the causes of the confounding factor. It won't eliminate but reduce bias. Surrogate confounders. Also, control surrogate effects
+  - **Selection Bias (definition of selection bias as used by economists but might be different):**
+    - Controlling more than should have
+    - Confounding is more about common causes whereas selection bias is about common effects
+    - Common Effect. Controlling the collider doesn't allow treatment to change outcome and thus underestimates the impact of treatment on outcome
+    - Controlling a mediator (mediate is between treatment and outcome, mediates the effect of treatment on outcome) results in underestimating the impact of treatment on outcome by closing the path.
+- **Regression:**
+  - Individual treatment effect is unknowable -> average causal effect ATE
+  - In the case of a randomized experiment, B1 is our ATE. That's A/B testing in the form of regression
+  - For multivariate, the B = Cov(T', Y) / VAR(T') where T is residual
+    - Equivalent to doing multivariate regression
+  - The residuals are always orthogonal or uncorrelated with any of the variables in the model that created it
+    - Thus T becomes random: T'
+  - If confounding omitted, the estimated coefficient has a bias term added that measures the impact of omitted variables on the outcome.
+    - If omitted have no impact on outcome or treatment, the bias term is zero. Essentially saying that the model is complete.
+  - Omitted might induce positive or negative bias 
+  - RCT fixes confounding bias by randomizing T such that it breaks the connection between confounding and T
+  - Regression fixes it by keeping it constant
+  - Causal inference with non-random or observational data should always be taken with a grain of salt. We can never be sure that all confounders were accounted for.
+- Data points with higher sample size and lower variance should be given more weight
+- **Grouped Data:**
+  - Use weighted least squares
+- For binary dummy, the coefficient is just the increment in the intercept of untreated
+  - Or difference in means
+  - If other regressors, it just means increment holding other regressors constant
+- More formally, when the independent variable is binary, as is often the case with treatment indicators, regression captures the ATE perfectly. That is because regression is a linear approximation to the conditional expectation function (CEF) and, in this particular case, the CEF IS linear. 
+- Add an interaction term between treatment and another variable (let's say confounder) to account for heterogeneous treatment effect or effect modification.
+  - Remember that the interpretation of other coefficients changes if interaction added. Instead of saying others are fixed, say that they are zero.
+- If we discretized the confounder and treatment, it will be no more parametric, and the model will calculate the mean response for different levels
+  - We don't make any assumption about the functional form but lose statistical significance. (p-values may be large)
+-  If add dummy covariates, the parameter of education becomes a weighted average of the effect on each dummy group
+  - Weight proportion to the variance of treatment in that group
+- With RCT, can calculate ATE easily but to get CI/p-values, use regression
+- **3-step regression:**
+  - 1 and 2. Regress outcome and treatment against additional control variables
+  - 3. Then, regress residuals against each other
+  - What's the point?
+    - In practice not needed
+  - But previously, we did a 2-step regression?
+- Controlling for other factors lowers the variance of the outcome (confounders and predictors of outcome) Adding anything that predicts outcome is a good idea to lower variance and improve causal estimate
+- Controlling for the factor that only impacts the treatment lowers the variance of the TREATMENT and increases the standard error of the estimate
+- **Instrumental variables:** can't always add variables (e.g. confounding) because no data. Variables that cause treatment but only impact the outcome through treatment.
+  - Z is correlated with T but not Y (exclusion restriction)
+  - ATE = Reduced Form / 1st Stage = COV(Y,Z) / COV(T,Z)
+  - If Z is Dummy: ATE = E[Y | Z=1] - E[Y | Z=0] / (E[T | Z=1]  - E[T | Z=0] ) Wald Estimator
+  - Alternative: 2SLS:
+    - 1st stage same. Just get the fitted treatment which is clean of bias. Then just regress treatment against outcome as usual
+  - Weak 1st stage will make standard errors high i.e. if weak correlation between T and Z.
+  - 2SLS is still biased like OLS. Adding even more IVs will make it closer to OLS. Increasing sample size will approach towards true value unlike OLS.
+- Never takes vs compliers vs always takes vs defiers
+  - IV only measures the treatment effect for the compliers
+- Local ATE just means that the ATE is estimated for compliers
+- **Matching estimator:** find units matching to each other on confounding variables and estimate ATET
+  - KNN can be used to find matching
+  - Bias correction can be done using some intermediate regression tricks
+    - WHY
+  - Bias can increase with the number of control variables
+  - Causalinference causalmodel has implementation of matching with bias correction 
+- Another way to deal with non-compliance - **Propensity score.** Probability of receiving treatment given X
+  - Calculate using logistic regression
+  - Model using Inverse Probability Treatment Weighting
+  - If treatment not randomly assigned, propensity will vary systematically between subpopulations
+    - If also varies by outcome, we have confounding
+  - CIs/standard errors can be calculated using bootstrapping
+  - Issues:
+    - It's not about predicting the treatment. Just need to control confounders. Don't unnecessarily include a control which doesn’t influence the outcome although it may increase the "predictive" power
+    - If treated and untreated propensity distributions don't overlap, variance will be high
+  - Propensity score matching
+    - Instead of X, can use propensity score for matching or control through regression
+- **Doubly Robust Estimator:** Combines regression and propensity score such that you get two possibilities of being correct by enabling the propensity model if regression is accurate and scales propensity if it is not accurate
+- **DiD:**
+  - If after is going to be different than before anyways, simple arithmetic is not a good estimator
+  - Solve for both space and time comparison
+  - Difference in the difference between control and treated before and after
+  - Assumes the growth pattern is the same between two groups. Often violated as groups are treated based on their potential growth. Should visualize historic data to see if the parallel trend assumption is satisfied. Corrected using synthetic control by "generating" a control group
+  - Can be refrased as a regression model with interaction and dummy terms
+  - If only have aggregated data, won't have variance information
+- **Panel data:**
+  - Same units tracked over multiple periods of time
+  - In DID, it’s okay to do T where Y is high but growth should be the same
+  - Propensity, regression, matching are good estimators but rely on the conditional unconfoundedness assumption
+    - All confounders are measured so T is random
+  - Unmeasured confounders can be tackled with IVs but it's not an easy task. Solution: panel data structure
+  - Fixed effects assume the impact is the same for all entities
+  - Can break down regression into two parts: 1 for factors and 1 for entities. For entities, it's just average so no need to run regression
+    - Can use linearmodels package
+  - Can also add Time EFFECTS in addition to fixed effects if treatment and response increase with time
+  - Won't work if confounders change over time or reverse causality
+- **Synthetic Control:**
+  - DID won't help if only aggregated data and no ideal control
+  - Create synthetic control based on multiple control units to make it similar to treated
+  - Inference using Fisher's Exact tests that pretends non-treated are treated and computed their effect "the placebo effects"
+- **Regression Discontinuity Design:**
+  - Define a threshold for the running variable. Local to the threshold, estimate sort of LATE. Assumption is that close to the threshold, anyone could fall either side and is close to a random experiment.
+  - Can use weighted least squares with kernel defining weights
+  - Can use Wald Estimator to deal with non-compliance
+- Cascade plot to show customer value + -
+- Treat everyone the same policy may or may not work
+  - e.g. just send everyone the email
+- Thinking about using quantiles for feature engineering
+- **Heterogeneous Treatment Effect:** from ATE to CATE
+  - Identify who responds better and treat that group
+  - Dy/dt using regression with interaction terms
+    - Can use dy/dt formula by extracting coefficients
+    - Or can input t + 1 data to get output predictions
+  - Can partition customers into high or low sensitivity
+  - Depending on the purpose, the exact value doesn't matter of sensitivity as long as ordering is correct
+- **Evaluating causal:**
+  - Train on non-random but use random for evaluation if have any. Otherwise too difficult
+  - Check sensitivity by band between predictive, causal, and random model
+  - Cumulative sensitivity or gain… order samples and calculate cumulative sensitivity
+- **CATE**
+  - Which groups to target? Estimate treatment effect
+  - In ML, predictive is about predicting Y but in causal, we predict delta Y. 
+  - Transform the response by combining Y and T. Target Transformation also called F-Learner
+    - I think only applicable for random data
+  - Non-linear treatment effect:
+    - Treatment effect changes as treatment changes
+- **Meta learners:**
+  - Non-random data for training and random for validation
+  - S-learner
+    - Change value of T and subtract predictions
+    - Bias towards zero if regularized
+  - T-learner
+    - Split on T, have one model per T value. Then make predictions and subtract
+  - X-learner:
+    - Advances T-learner by imputing treatment effect on treated and untreated and then using propensity for further correction of bias 
+  - R-learner:
+    - Orthogonalization: get residuals using ML (T' and Y')
+    - Regress them to get ATE
+    - Interact T with X to get CATE
+    - Non-parametric implementation also there
+- Treatment effect may be most high at average. Like logistic derivative. In marketing, e.g., target the ones in the middle
+- **Two-way fixed effects:** time and unit fixed effects
+- **Synthetic DID:** combines concepts of creating synthetic controls, and accounting for unit and time fixed effects for panel data
